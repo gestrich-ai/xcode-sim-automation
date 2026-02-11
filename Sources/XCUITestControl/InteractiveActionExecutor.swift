@@ -219,7 +219,11 @@ struct InteractiveActionExecutor {
             element = app
         }
 
+        #if os(iOS)
         element.pinch(withScale: CGFloat(scale), velocity: CGFloat(velocity))
         return .success()
+        #else
+        return .failure("Pinch is not supported on macOS")
+        #endif
     }
 }
