@@ -41,6 +41,26 @@ When this happens:
 | Action limit reached | Break goal into smaller steps, restart skill |
 | Test timeout | XCUITest exited due to 5 min inactivity, restart test |
 
+## Common Pitfalls
+
+### Multiple Element Matches on Scroll
+
+Scrolling to an element can crash the test if the target identifier matches multiple elements (e.g., a filename appearing in both a sidebar and content area). The XCUITest framework reports "Multiple matching elements found" and the test terminates.
+
+**Fix**: Use a more unique scroll target (e.g., a section header or parent container) or narrow with `--target-type`.
+
+### LazyVStack and Off-Screen Elements
+
+SwiftUI `LazyVStack` only renders visible items. Elements below the scroll fold won't appear in the accessibility hierarchy at all — they simply don't exist yet.
+
+**Fix**: Scroll down to reveal the target area before searching. Use a known visible element as the scroll anchor.
+
+### Menu Bar Items Not Hittable
+
+Menu items (e.g., `performZoom:`) exist in the hierarchy but are not hittable because the menu isn't open. Tapping them directly will fail.
+
+**Fix**: First open the menu (tap the MenuBarItem), then tap the MenuItem.
+
 ## Troubleshooting
 
 ### Files not appearing / hierarchy not written

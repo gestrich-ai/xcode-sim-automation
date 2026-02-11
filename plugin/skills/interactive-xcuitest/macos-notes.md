@@ -70,6 +70,12 @@ xcodebuild test-without-building \
   -only-testing:"$UI_TEST_TARGET/$TEST_CLASS/$TEST_METHOD"
 ```
 
+## SwiftUI List Identifier Placement
+
+In SwiftUI `List`/`OutlineRow`, accessibility identifiers set via `.accessibilityIdentifier()` on row content land on `StaticText` children, not the `Cell` or `OutlineRow` itself. When tapping by identifier on list rows, use `--target-type staticText` instead of `--target-type cell`.
+
+Using `--target-type any` may match other elements in the row (e.g., Button children like Edit/Trash icons) before the text. Use `--target-type staticText --index 0` to reliably hit the label.
+
 ## Pinch Not Available
 
 The `pinch` command is iOS-only and will not work on macOS.
