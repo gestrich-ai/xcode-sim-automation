@@ -8,6 +8,8 @@ struct InteractiveActionExecutor {
         switch command.action {
         case .tap:
             return executeTap(command, in: app)
+        case .rightClick:
+            return executeRightClick(command, in: app)
         case .scroll:
             return executeScroll(command, in: app)
         case .type:
@@ -98,6 +100,83 @@ struct InteractiveActionExecutor {
         }
 
         return .failure("Element '\(target)' exists but was not hittable after \(retryCount) attempts")
+    }
+
+    // MARK: - Right Click
+
+    private func executeRightClick(_ command: InteractiveCommand, in app: XCUIApplication) -> InteractiveActionResult {
+        #if os(macOS)
+        guard let target = command.target else {
+            return .failure("No target specified for rightClick action")
+        }
+
+        let timeout = configuration.elementWaitTimeout
+        let retryCount = configuration.tapRetryCount
+        let retryDelay = configuration.tapRetryDelay
+
+        var lookupResult: ElementLookupResult?
+
+        for attempt in 1...retryCount {
+            lookupResult = ElementLookup.findHittableElement(
+                identifier: target, type: command.targetType, index: command.index, in: app
+            )
+
+            guard let result = lookupResult, result.matchCount > 0 else {
+                if attempt < retryCount {
+                    Thread.sleep(forTimeInterval: retryDelay)
+                    continue
+                }
+                return .failure("Element '\(target)' not found after \(retryCount) attempts")
+            }
+
+            if let index = command.index, index >= result.matchCount {
+                return .failure("Index \(index) out of range. Found \(result.matchCount) '\(target)' element(s). Use --index 0 to \(result.matchCount - 1).")
+            }
+
+            guard let element = result.element else {
+                if attempt < retryCount {
+                    Thread.sleep(forTimeInterval: retryDelay)
+                    continue
+                }
+                return .failure("Element '\(target)' not found after \(retryCount) attempts")
+            }
+
+            guard element.waitForExistence(timeout: timeout) else {
+                if attempt < retryCount {
+                    Thread.sleep(forTimeInterval: retryDelay)
+                    continue
+                }
+                return .failure("Element '\(target)' not found after waiting \(Int(timeout)) seconds")
+            }
+
+            if element.isHittable {
+                element.rightClick()
+
+                var info: String?
+                if result.matchCount > 1 {
+                    let clickedIndex = result.tappedIndex ?? 0
+                    info = "Right-clicked \(result.elementType) at index \(clickedIndex) of \(result.matchCount) matches"
+                }
+                return .success(info: info)
+            }
+
+            if attempt < retryCount {
+                Thread.sleep(forTimeInterval: retryDelay)
+            }
+        }
+
+        guard let result = lookupResult else {
+            return .failure("Element '\(target)' not found")
+        }
+
+        if result.matchCount > 1 {
+            return .failure("Found \(result.matchCount) elements matching '\(target)', none were hittable. Specify --index 0 to \(result.matchCount - 1) to select a specific element.")
+        }
+
+        return .failure("Element '\(target)' exists but was not hittable after \(retryCount) attempts")
+        #else
+        return .failure("rightClick is not supported on iOS")
+        #endif
     }
 
     // MARK: - Scroll

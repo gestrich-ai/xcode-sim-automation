@@ -2,6 +2,7 @@ import Foundation
 
 public enum InteractiveAction: String, Codable {
     case tap
+    case rightClick
     case scroll
     case type
     case wait

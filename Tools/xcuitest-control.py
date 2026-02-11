@@ -7,6 +7,7 @@ Writes commands to /tmp/xcuitest-command.json and polls for completion.
 
 Usage:
     ./xcuitest-control.py tap --target buttonId [--target-type button]
+    ./xcuitest-control.py right-click --target buttonId [--target-type button]
     ./xcuitest-control.py scroll --direction down [--target scrollView]
     ./xcuitest-control.py type --value "text to type" [--target textField]
     ./xcuitest-control.py adjust --target sliderId --value 0.5
@@ -153,6 +154,17 @@ def cmd_tap(args) -> int:
     """Execute tap action."""
     result = execute_action(
         "tap",
+        target=args.target,
+        target_type=args.target_type,
+        index=args.index
+    )
+    return output_result(result, args.verbose)
+
+
+def cmd_right_click(args) -> int:
+    """Execute right-click action."""
+    result = execute_action(
+        "rightClick",
         target=args.target,
         target_type=args.target_type,
         index=args.index
@@ -316,6 +328,14 @@ def main():
                            help="Element type for faster lookup")
     tap_parser.add_argument("--index", "-i", type=int, help="Index of element when multiple match (0-based)")
     tap_parser.set_defaults(func=cmd_tap)
+
+    # right-click command
+    right_click_parser = subparsers.add_parser("right-click", help="Right-click an element (macOS only)")
+    right_click_parser.add_argument("--target", "-t", required=True, help="Element identifier")
+    right_click_parser.add_argument("--target-type", "-T", choices=["button", "staticText", "cell", "textField", "slider", "any"],
+                                    help="Element type for faster lookup")
+    right_click_parser.add_argument("--index", "-i", type=int, help="Index of element when multiple match (0-based)")
+    right_click_parser.set_defaults(func=cmd_right_click)
 
     # scroll command
     scroll_parser = subparsers.add_parser("scroll", help="Scroll/swipe in a direction")
