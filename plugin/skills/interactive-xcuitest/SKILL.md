@@ -102,7 +102,7 @@ python3 $CLI -c "$CT" reset
 
 ### 3. Build and Start the XCUITest
 
-Always build first (catches errors without hanging), then run:
+Always build first (catches errors without hanging), then run. All `xcodebuild` commands must be run from the directory containing `$PROJECT` (the `.xcodeproj` file).
 
 ```bash
 xcodebuild build-for-testing \
