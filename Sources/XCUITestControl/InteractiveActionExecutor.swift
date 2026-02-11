@@ -18,6 +18,8 @@ struct InteractiveActionExecutor {
             return executeAdjust(command, in: app)
         case .pinch:
             return executePinch(command, in: app)
+        case .activate:
+            return executeActivate(app)
         case .screenshot:
             return .success()
         case .done:
@@ -191,6 +193,14 @@ struct InteractiveActionExecutor {
         let endCoordinate = slider.coordinate(withNormalizedOffset: CGVector(dx: normalizedValue, dy: 0.5))
         startCoordinate.press(forDuration: 0.05, thenDragTo: endCoordinate)
 
+        return .success()
+    }
+
+    // MARK: - Activate
+
+    private func executeActivate(_ app: XCUIApplication) -> InteractiveActionResult {
+        app.activate()
+        Thread.sleep(forTimeInterval: 0.5)
         return .success()
     }
 

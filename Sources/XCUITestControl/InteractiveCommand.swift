@@ -8,6 +8,7 @@ public enum InteractiveAction: String, Codable {
     case screenshot
     case adjust
     case pinch
+    case activate
     case done
 }
 

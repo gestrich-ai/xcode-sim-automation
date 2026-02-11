@@ -15,6 +15,11 @@ Usage:
     ./xcuitest-control.py screenshot
     ./xcuitest-control.py done
     ./xcuitest-control.py status  # Check current command status
+    ./xcuitest-control.py reset   # Clean protocol files for fresh session
+    ./xcuitest-control.py ready   # Check if XCUITest is running and ready
+
+    # Use --container to set all paths from a single directory:
+    ./xcuitest-control.py --container ~/Library/Containers/.../Data/tmp tap --target btn
 """
 
 import argparse
@@ -25,14 +30,31 @@ import time
 from pathlib import Path
 from typing import Optional
 
-# File paths for communication (overridable via environment variables)
-COMMAND_PATH = Path(os.environ.get("XCUITEST_COMMAND_PATH", "/tmp/xcuitest-command.json"))
-HIERARCHY_PATH = Path(os.environ.get("XCUITEST_HIERARCHY_PATH", "/tmp/xcuitest-hierarchy.txt"))
-SCREENSHOT_PATH = Path(os.environ.get("XCUITEST_SCREENSHOT_PATH", "/tmp/xcuitest-screenshot.png"))
-
 # Polling configuration
 POLL_INTERVAL = 0.2  # seconds
 POLL_TIMEOUT = 30.0  # seconds
+
+
+def resolve_paths(container_dir: Optional[str] = None):
+    """Resolve file paths from --container arg, env vars, or defaults."""
+    if container_dir:
+        base = Path(container_dir).expanduser()
+        return (
+            base / "xcuitest-command.json",
+            base / "xcuitest-hierarchy.txt",
+            base / "xcuitest-screenshot.png",
+        )
+    return (
+        Path(os.environ.get("XCUITEST_COMMAND_PATH", "/tmp/xcuitest-command.json")),
+        Path(os.environ.get("XCUITEST_HIERARCHY_PATH", "/tmp/xcuitest-hierarchy.txt")),
+        Path(os.environ.get("XCUITEST_SCREENSHOT_PATH", "/tmp/xcuitest-screenshot.png")),
+    )
+
+
+# These are set after argument parsing in main()
+COMMAND_PATH: Path
+HIERARCHY_PATH: Path
+SCREENSHOT_PATH: Path
 
 
 def read_command() -> Optional[dict]:
@@ -197,6 +219,12 @@ def cmd_screenshot(args) -> int:
     return output_result(result, args.verbose)
 
 
+def cmd_activate(args) -> int:
+    """Bring the app to foreground."""
+    result = execute_action("activate")
+    return output_result(result, args.verbose)
+
+
 def cmd_done(args) -> int:
     """Execute done action to exit test loop."""
     result = execute_action("done")
@@ -219,13 +247,65 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_reset(args) -> int:
+    """Clean protocol files for a fresh session."""
+    removed = []
+    for path in [COMMAND_PATH, HIERARCHY_PATH, SCREENSHOT_PATH]:
+        if path.exists():
+            path.unlink()
+            removed.append(str(path))
+
+    print(json.dumps({
+        "status": "completed",
+        "removed": removed,
+        "message": f"Removed {len(removed)} file(s)" if removed else "No files to remove",
+    }, indent=2))
+    return 0
+
+
+def cmd_ready(args) -> int:
+    """Check if XCUITest is running and ready for commands."""
+    timeout = float(args.timeout) if args.timeout else 0
+    start = time.time()
+
+    while True:
+        hierarchy_exists = HIERARCHY_PATH.exists()
+        hierarchy_age = None
+        if hierarchy_exists:
+            hierarchy_age = time.time() - HIERARCHY_PATH.stat().st_mtime
+
+        command = read_command()
+        command_status = command.get("status") if command else None
+
+        ready = hierarchy_exists and command_status in ("completed", "error", None)
+
+        if ready or timeout <= 0 or (time.time() - start) >= timeout:
+            output = {
+                "ready": ready,
+                "hierarchy_exists": hierarchy_exists,
+                "hierarchy_age_seconds": round(hierarchy_age, 1) if hierarchy_age is not None else None,
+                "command_status": command_status,
+                "hierarchy": str(HIERARCHY_PATH) if hierarchy_exists else None,
+                "screenshot": str(SCREENSHOT_PATH) if SCREENSHOT_PATH.exists() else None,
+            }
+            print(json.dumps(output, indent=2))
+            return 0 if ready else 1
+
+        time.sleep(1.0)
+
+
 def main():
+    global COMMAND_PATH, HIERARCHY_PATH, SCREENSHOT_PATH
+
     parser = argparse.ArgumentParser(
         description="Control XCUITest through a file-based protocol",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Include full command in output")
+    parser.add_argument("--container", "-c", metavar="DIR",
+                        help="Container tmp directory (sets all file paths). "
+                             "Overrides XCUITEST_*_PATH env vars.")
 
     subparsers = parser.add_subparsers(dest="action", required=True)
 
@@ -274,6 +354,10 @@ def main():
     screenshot_parser = subparsers.add_parser("screenshot", help="Capture screenshot and hierarchy")
     screenshot_parser.set_defaults(func=cmd_screenshot)
 
+    # activate command
+    activate_parser = subparsers.add_parser("activate", help="Bring app to foreground")
+    activate_parser.set_defaults(func=cmd_activate)
+
     # done command
     done_parser = subparsers.add_parser("done", help="Exit the test loop")
     done_parser.set_defaults(func=cmd_done)
@@ -282,7 +366,20 @@ def main():
     status_parser = subparsers.add_parser("status", help="Check current status without executing")
     status_parser.set_defaults(func=cmd_status)
 
+    # reset command
+    reset_parser = subparsers.add_parser("reset", help="Clean protocol files for fresh session")
+    reset_parser.set_defaults(func=cmd_reset)
+
+    # ready command
+    ready_parser = subparsers.add_parser("ready", help="Check if XCUITest is running and ready")
+    ready_parser.add_argument("--timeout", "-t", default="0",
+                              help="Seconds to wait for ready state (0 = instant check, default: 0)")
+    ready_parser.set_defaults(func=cmd_ready)
+
     args = parser.parse_args()
+
+    # Resolve file paths from --container, env vars, or defaults
+    COMMAND_PATH, HIERARCHY_PATH, SCREENSHOT_PATH = resolve_paths(args.container)
 
     try:
         exit_code = args.func(args)
