@@ -1,0 +1,15 @@
+{
+  "name": "xcode-sim-automation",
+  "version": "1.0.0",
+  "description": "AI-driven XCUITest automation for interactive UI control and screenshot capture",
+  "author": {
+    "name": "Bill Gestrich",
+    "url": "https://github.com/gestrich"
+  },
+  "keywords": [
+    "xcuitest",
+    "automation",
+    "ui-testing",
+    "screenshots"
+  ]
+}
