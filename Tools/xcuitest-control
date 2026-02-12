@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BINARY="$PACKAGE_ROOT/.build/release/xcuitest-control"
+
+needs_build=false
+if [ ! -f "$BINARY" ]; then
+    needs_build=true
+elif [ -n "$(find "$PACKAGE_ROOT/Sources" "$PACKAGE_ROOT/Package.swift" -newer "$BINARY" -print -quit)" ]; then
+    needs_build=true
+fi
+
+if [ "$needs_build" = true ]; then
+    echo "Building xcuitest-control..." >&2
+    swift build -c release --package-path "$PACKAGE_ROOT" --product xcuitest-control 2>&1 | tail -1 >&2
+fi
+
+exec "$BINARY" "$@"

@@ -115,50 +115,18 @@ Package: XCUITestControl
 - `tap --target "test_button" -c /tmp` writes a valid `{"action":"tap","status":"pending","target":"test_button"}` command file, then times out as expected (no harness running), returning error JSON with exit code 1
 - Side-by-side JSON comparison (sorted keys) of `reset`, `status`, and `tap` command files between Python and Swift CLIs: all match exactly
 
-## - [ ] Phase 6: Create wrapper script with auto-build
+## - [x] Phase 6: Create wrapper script with auto-build
 
-Create a `Tools/xcuitest-control` bash wrapper script that the AI (and users) invoke instead of calling the Swift binary directly. The script auto-builds when source files have changed, then passes all arguments through.
+**Completed.** Created `Tools/xcuitest-control` bash wrapper script that auto-builds the Swift CLI in release mode when source files have changed, then execs the binary with all arguments passed through.
 
-**Tasks:**
-- Create `Tools/xcuitest-control` (no extension — replaces `xcuitest-control.py` as the primary entry point)
-- The script should:
-  1. Resolve the package root directory (relative to the script's own location)
-  2. Define the binary path: `$PACKAGE_ROOT/.build/release/xcuitest-control`
-  3. Check if a rebuild is needed by comparing the binary's mtime against source files:
-     - Use `find Sources/ Package.swift -newer "$BINARY" | head -1` to check if any source file is newer than the binary
-     - If the binary doesn't exist, always build
-     - If any source file is newer, rebuild
-  4. If rebuild needed, run `swift build -c release --package-path "$PACKAGE_ROOT"` (use release for faster execution at runtime)
-     - Print a brief message to stderr (e.g., `"Building xcuitest-control..."`) so it doesn't pollute JSON stdout
-     - If build fails, exit with the build's exit code
-  5. Exec the binary with all passed-through arguments: `exec "$BINARY" "$@"`
-- Make the script executable (`chmod +x`)
-- Use release configuration (`-c release`) so the binary runs fast — the build cost is paid once and cached
+**Technical notes:**
+- Script resolves package root relative to its own location (`$SCRIPT_DIR/..`)
+- Uses `find ... -newer "$BINARY" -print -quit` for efficient staleness detection against all files under `Sources/` and `Package.swift`
+- Build output goes to stderr (only the last line via `tail -1`) to avoid polluting JSON stdout
+- Uses `--product xcuitest-control` to build only the CLI target, not the full package
+- Verified: first run triggers build, second run skips it, touching a source file triggers rebuild
 
-**Wrapper script sketch:**
-```bash
-#!/bin/bash
-set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-BINARY="$PACKAGE_ROOT/.build/release/xcuitest-control"
-
-needs_build=false
-if [ ! -f "$BINARY" ]; then
-    needs_build=true
-elif [ -n "$(find "$PACKAGE_ROOT/Sources" "$PACKAGE_ROOT/Package.swift" -newer "$BINARY" -print -quit)" ]; then
-    needs_build=true
-fi
-
-if [ "$needs_build" = true ]; then
-    echo "Building xcuitest-control..." >&2
-    swift build -c release --package-path "$PACKAGE_ROOT" --product xcuitest-control 2>&1 | tail -1 >&2
-fi
-
-exec "$BINARY" "$@"
-```
-
-**Files to create:**
+**Files created:**
 - `Tools/xcuitest-control`
 
 ## - [ ] Phase 7: Update skill documentation
