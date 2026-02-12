@@ -1,4 +1,5 @@
 import XCTest
+import XCUITestControlModels
 
 public struct ElementLookupResult {
     public let element: XCUIElement?

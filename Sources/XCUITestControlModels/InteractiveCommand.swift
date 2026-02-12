@@ -1,6 +1,6 @@
 import Foundation
 
-public enum InteractiveAction: String, Codable {
+public enum InteractiveAction: String, Codable, Sendable {
     case tap
     case rightClick
     case scroll
@@ -13,7 +13,7 @@ public enum InteractiveAction: String, Codable {
     case done
 }
 
-public enum InteractiveTargetType: String, Codable {
+public enum InteractiveTargetType: String, Codable, Sendable {
     case button
     case staticText
     case cell
@@ -22,21 +22,21 @@ public enum InteractiveTargetType: String, Codable {
     case any
 }
 
-public enum InteractiveScrollDirection: String, Codable {
+public enum InteractiveScrollDirection: String, Codable, Sendable {
     case up
     case down
     case left
     case right
 }
 
-public enum InteractiveCommandStatus: String, Codable {
+public enum InteractiveCommandStatus: String, Codable, Sendable {
     case pending
     case executing
     case completed
     case error
 }
 
-public struct InteractiveCommand: Codable {
+public struct InteractiveCommand: Codable, Sendable {
     public var action: InteractiveAction
     public var target: String?
     public var targetType: InteractiveTargetType?
@@ -101,7 +101,7 @@ public struct InteractiveCommand: Codable {
     }
 }
 
-public struct InteractiveActionResult {
+public struct InteractiveActionResult: Sendable {
     public let success: Bool
     public let errorMessage: String?
     public let info: String?
