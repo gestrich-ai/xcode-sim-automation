@@ -58,29 +58,19 @@ Package: XCUITestControl
 - The executable product is also exported from the package for discoverability
 - All three targets (XCUITestControlModels, XCUITestControl, xcuitest-control) build successfully
 
-## - [ ] Phase 3: Implement shared CLI infrastructure
+## - [x] Phase 3: Implement shared CLI infrastructure
 
-Implement the file I/O and polling logic that all subcommands share — the Swift equivalent of the Python's `resolve_paths`, `write_command`, `read_command`, `wait_for_completion`, and `output_result`.
+**Completed.** Created shared infrastructure for file I/O, path resolution, and JSON output formatting that all subcommands will use.
 
-**Tasks:**
-- Create `PathResolver` (or similar) that resolves command/hierarchy/screenshot paths from:
-  - `--container` option (like Python's `--container`)
-  - Environment variables (`XCUITEST_COMMAND_PATH`, etc.)
-  - Defaults (`/tmp/xcuitest-*`)
-- Create `CommandIO` (or similar) with methods:
-  - `writeCommand(_ command: InteractiveCommand)` — encode and write JSON
-  - `readCommand() -> InteractiveCommand?` — decode from file
-  - `waitForCompletion(timeout:) -> InteractiveCommand` — poll until completed/error
-- Create `ResultOutput` to format JSON output matching the current Python format:
-  - `{ "status", "hierarchy", "screenshot", "error", "info" }`
-- Use `InteractiveCommand` directly from the shared models — no dict-building required
+**Technical notes:**
+- `PathResolver` resolves paths from `--container` option, environment variables (`XCUITEST_COMMAND_PATH`, etc.), or `/tmp/` defaults — matching the Python's `resolve_paths` exactly
+- `CommandIO` provides `writeCommand`, `readCommand`, and `waitForCompletion` with 0.2s poll interval and 30s timeout matching Python defaults
+- `ResultOutput` formats JSON output with `status`, `hierarchy`, `screenshot`, `error`, and `info` keys identical to the Python CLI's `output_result`
+- `GlobalOptions` (`ParsableArguments`) provides `--verbose`/`-v` and `--container`/`-c` flags to all subcommands via `@OptionGroup`
+- All subcommands updated to include `@OptionGroup var globals: GlobalOptions` (still stubbed — implementation in Phase 4)
+- JSON encoding uses `.prettyPrinted` and `.sortedKeys` to match Python's `indent=2, sort_keys=True`
 
-**Design notes:**
-- The polling interval (0.2s) and timeout (30s) should match current Python defaults
-- JSON output format must be identical to Python's for skill compatibility
-- The `--container` / `-c` flag and `--verbose` / `-v` flag should be global options on the root command
-
-**Files to create:**
+**Files created:**
 - `Sources/xcuitest-control/PathResolver.swift`
 - `Sources/xcuitest-control/CommandIO.swift`
 - `Sources/xcuitest-control/ResultOutput.swift`
