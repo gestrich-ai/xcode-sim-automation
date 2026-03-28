@@ -44,6 +44,10 @@ public struct InteractiveControlLoop {
     public func run(app: XCUIApplication) {
         let executor = InteractiveActionExecutor(configuration: configuration)
 
+        // Clear stale commands from previous sessions to prevent
+        // the loop from immediately exiting on a leftover "done" command
+        try? FileManager.default.removeItem(atPath: configuration.commandPath)
+
         writeHierarchy(app: app)
         writeScreenshot(app: app)
         writeInitialCommand()
